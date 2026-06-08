@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BeatSync Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#06060e;--p1:#0a0a15;--p2:#0f0f1c;--p3:#141422;
+  --b1:rgba(255,255,255,0.04);--b2:rgba(255,255,255,0.08);--b3:rgba(14,165,233,0.3);
+  --ac:#0ea5e9;--ac2:#38bdf8;--ac3:#7dd3fc;
+  --pu:#818cf8;--pk:#f472b6;--yl:#fbbf24;--rd:#f87171;--gr:#34d399;
+  --tx:#e2e8f4;--dim:#3a3a5c;
+  font-size:14px;
+}
+body{background:var(--bg);color:var(--tx);font-family:'DM Sans',sans-serif;min-height:100vh;overflow-x:hidden}
+
+/* ANIMATED BG */
+#bg-canvas{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.7}
+
+/* HEADER */
+header{position:sticky;top:0;z-index:50;background:rgba(6,6,14,0.88);backdrop-filter:blur(20px);border-bottom:1px solid var(--b1);padding:0 24px;display:flex;align-items:center;height:56px;gap:0}
+.logo{display:flex;align-items:center;gap:11px;text-decoration:none}
+.logo-icon{width:34px;height:34px;background:linear-gradient(135deg,var(--ac),var(--pu));border-radius:8px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 16px rgba(14,165,233,0.35);animation:logoPulse 3s ease-in-out infinite}
+@keyframes logoPulse{0%,100%{box-shadow:0 0 16px rgba(14,165,233,0.35)}50%{box-shadow:0 0 28px rgba(14,165,233,0.6)}}
+.logo-wordmark{font-family:'Syne',sans-serif;font-weight:800;font-size:18px;letter-spacing:-.5px;background:linear-gradient(135deg,#fff 30%,var(--ac3));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-left:10px}
+.header-wave{flex:1;display:flex;align-items:center;justify-content:center;padding:0 24px;opacity:.4}
+.header-wave canvas{height:28px;width:180px}
+.header-right{display:flex;align-items:center;gap:10px}
+.test-toggle{display:flex;align-items:center;gap:7px;background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.15);border-radius:20px;padding:5px 10px 5px 6px;cursor:pointer;transition:all .2s;white-space:nowrap}
+.test-toggle.live{background:rgba(14,165,233,0.08);border-color:rgba(14,165,233,0.2)}
+.toggle-knob{width:26px;height:15px;background:rgba(251,191,36,0.2);border-radius:20px;position:relative;transition:background .3s;flex-shrink:0}
+.toggle-knob.live{background:rgba(14,165,233,0.3)}
+.toggle-dot{position:absolute;top:2px;left:2px;width:11px;height:11px;border-radius:50%;background:var(--yl);transition:all .3s;box-shadow:0 0 6px rgba(251,191,36,0.5)}
+.toggle-dot.live{left:13px;background:var(--ac);box-shadow:0 0 6px rgba(14,165,233,0.6)}
+.toggle-lbl{font-size:10px;font-weight:700;font-family:'DM Mono',monospace;letter-spacing:.6px;color:var(--yl);transition:color .3s}
+.toggle-lbl.live{color:var(--ac)}
+.yt-connect{display:flex;align-items:center;gap:6px;background:rgba(248,114,182,0.08);border:1px solid rgba(248,114,182,0.2);color:var(--pk);font-size:11px;font-weight:700;padding:6px 12px;border-radius:8px;cursor:pointer;font-family:'Syne',sans-serif;transition:all .2s;letter-spacing:.3px;white-space:nowrap}
+.yt-connect:hover{background:rgba(248,114,182,0.14)}
+.avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--ac),var(--pu));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;font-family:'Syne',sans-serif;flex-shrink:0}
+
+/* TABS */
+.tabs{display:flex;gap:0;padding:0 32px;position:relative;z-index:1;border-bottom:1px solid var(--b1)}
+.tab{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:14px 18px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--dim);cursor:pointer;transition:all .2s;margin-bottom:-1px}
+.tab:hover{color:var(--tx)}
+.tab.on{color:var(--ac);border-bottom-color:var(--ac)}
+
+/* LAYOUT */
+.page{display:none;padding:24px 32px;position:relative;z-index:1}
+.page.on{display:block;animation:fadeUp .3s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.two-col{display:grid;grid-template-columns:1fr 360px;gap:16px}
+.three-col{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media(max-width:900px){.two-col{grid-template-columns:1fr}.three-col{grid-template-columns:1fr}}
+
+/* CARDS */
+.card{background:var(--p1);border:1px solid var(--b1);border-radius:14px;padding:18px;transition:border-color .3s}
+.card:hover{border-color:rgba(14,165,233,0.08)}
+.card-title{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--dim);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.dot{width:5px;height:5px;border-radius:50%;background:var(--ac);flex-shrink:0;box-shadow:0 0 6px var(--ac)}
+
+/* DROP ZONES */
+.drop-zone{border:1.5px dashed rgba(14,165,233,0.18);border-radius:12px;padding:28px;text-align:center;cursor:pointer;transition:all .25s;background:rgba(14,165,233,0.02);position:relative}
+.drop-zone:hover,.drop-zone.drag-over{border-color:var(--ac);background:rgba(14,165,233,0.06);box-shadow:inset 0 0 20px rgba(14,165,233,0.04)}
+.drop-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.drop-icon{font-size:26px;margin-bottom:8px;display:block}
+.drop-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;margin-bottom:3px}
+.drop-sub{font-size:11px;color:var(--dim)}
+
+/* WAVEFORM */
+#waveform-canvas{width:100%;height:52px;border-radius:8px;background:rgba(14,165,233,0.03);display:block;margin-top:12px}
+.audio-player{margin-top:12px;background:var(--p2);border-radius:10px;padding:12px 14px;border:1px solid rgba(14,165,233,0.1)}
+.audio-controls{display:flex;align-items:center;gap:10px}
+.play-btn{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--ac),var(--pu));border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .15s;box-shadow:0 0 12px rgba(14,165,233,0.3)}
+.play-btn:hover{transform:scale(1.08)}
+.audio-name{font-size:12px;font-weight:600;font-family:'Syne',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ac2)}
+.audio-meta{font-size:10px;color:var(--dim);font-family:'DM Mono',monospace}
+.audio-bar{height:3px;background:var(--b2);border-radius:2px;margin-top:8px;position:relative;cursor:pointer}
+.audio-progress{height:100%;background:linear-gradient(90deg,var(--ac),var(--pu));border-radius:2px;width:0%;transition:width .1s linear}
+
+/* THUMBNAIL */
+.thumb-preview{width:100%;aspect-ratio:16/9;border-radius:10px;background:var(--p2);overflow:hidden;display:flex;align-items:center;justify-content:center;margin-bottom:12px;border:1px solid var(--b2)}
+.thumb-preview img{width:100%;height:100%;object-fit:cover}
+
+/* FORM */
+.form-row{margin-bottom:12px}
+label{display:block;font-size:10px;font-weight:700;font-family:'Syne',sans-serif;letter-spacing:.5px;text-transform:uppercase;color:var(--dim);margin-bottom:5px}
+input[type=text],input[type=number],textarea,select,input[type=datetime-local]{width:100%;background:var(--p2);border:1px solid var(--b2);border-radius:8px;color:var(--tx);font-family:'DM Sans',sans-serif;font-size:13px;padding:9px 12px;outline:none;transition:border-color .2s;resize:none}
+input:focus,textarea:focus,select:focus{border-color:rgba(14,165,233,0.4);box-shadow:0 0 0 3px rgba(14,165,233,0.06)}
+input::placeholder,textarea::placeholder{color:#2a2a40}
+select option{background:var(--p2)}
+.tag-box{display:flex;flex-wrap:wrap;gap:5px;padding:8px;background:var(--p2);border:1px solid var(--b2);border-radius:8px;min-height:42px;cursor:text}
+.tag-box:focus-within{border-color:rgba(14,165,233,0.4)}
+.tag{background:rgba(14,165,233,0.1);border:1px solid rgba(14,165,233,0.2);color:var(--ac2);font-size:11px;padding:3px 8px;border-radius:4px;font-family:'DM Mono',monospace;display:flex;align-items:center;gap:5px}
+.tag-x{cursor:pointer;opacity:.5}.tag-x:hover{opacity:1}
+.tag-input-hidden{background:transparent;border:none;outline:none;color:var(--tx);font-size:12px;padding:3px;min-width:80px;font-family:'DM Sans',sans-serif}
+.title-template{background:var(--p3);border:1px solid var(--b2);border-radius:8px;padding:9px 12px;font-family:'DM Mono',monospace;font-size:11px;color:var(--ac3);cursor:pointer;margin-bottom:6px;transition:all .2s;line-height:1.4}
+.title-template:hover{border-color:rgba(14,165,233,0.35);background:rgba(14,165,233,0.04)}
+.title-cat{font-size:9px;color:var(--dim);margin-bottom:3px;font-family:'Syne',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+
+/* BUTTONS */
+.btn{font-family:'Syne',sans-serif;font-weight:700;font-size:11px;letter-spacing:.4px;text-transform:uppercase;padding:8px 14px;border-radius:8px;border:1px solid var(--b2);background:transparent;color:var(--tx);cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all .2s}
+.btn:hover{background:var(--p3)}
+.btn-ac{background:linear-gradient(135deg,var(--ac),var(--pu));border:none;color:#fff;box-shadow:0 4px 14px rgba(14,165,233,0.25)}
+.btn-ac:hover{box-shadow:0 4px 20px rgba(14,165,233,0.4);transform:translateY(-1px)}
+.btn-pk{background:rgba(244,114,182,0.1);border-color:rgba(244,114,182,0.25);color:var(--pk)}
+.btn-pk:hover{background:rgba(244,114,182,0.16)}
+.btn-pu{background:rgba(129,140,248,0.1);border-color:rgba(129,140,248,0.25);color:var(--pu)}
+.btn-pu:hover{background:rgba(129,140,248,0.16)}
+.btn-full{width:100%;justify-content:center}
+.btn-lg{padding:13px 20px;font-size:12px;border-radius:10px}
+.upload-progress{background:var(--p2);border-radius:6px;height:4px;margin-top:12px;overflow:hidden;display:none}
+.upload-bar{height:100%;background:linear-gradient(90deg,var(--ac),var(--pu),var(--pk));background-size:200%;animation:barShift 1.5s linear infinite;width:0%;transition:width .3s;border-radius:6px}
+@keyframes barShift{0%{background-position:0%}100%{background-position:200%}}
+
+/* STATS */
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
+.stat{background:var(--p1);border:1px solid var(--b1);border-radius:12px;padding:14px 16px;position:relative;overflow:hidden}
+.stat::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.stat:nth-child(1)::before{background:linear-gradient(90deg,var(--ac),transparent)}
+.stat:nth-child(2)::before{background:linear-gradient(90deg,var(--pu),transparent)}
+.stat:nth-child(3)::before{background:linear-gradient(90deg,var(--yl),transparent)}
+.stat:nth-child(4)::before{background:linear-gradient(90deg,var(--pk),transparent)}
+.stat-val{font-family:'DM Mono',monospace;font-size:22px;font-weight:500;margin-bottom:3px}
+.sv-ac{color:var(--ac)}.sv-pu{color:var(--pu)}.sv-yl{color:var(--yl)}.sv-pk{color:var(--pk)}
+.stat-lbl{font-size:10px;color:var(--dim);font-family:'Syne',sans-serif;letter-spacing:.3px;text-transform:uppercase}
+
+/* PERFORMANCE TABLE */
+.perf-table{width:100%;border-collapse:collapse}
+.perf-table th{font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--dim);padding:8px 12px;border-bottom:1px solid var(--b1);text-align:left}
+.perf-table td{padding:10px 12px;border-bottom:1px solid var(--b1);font-size:12px;transition:background .15s}
+.perf-table tr:last-child td{border-bottom:none}
+.perf-table tbody tr:hover td{background:rgba(14,165,233,0.03)}
+.bar-cell{display:flex;align-items:center;gap:8px}
+.mini-bar{height:3px;border-radius:2px;min-width:4px}
+.trend-up{color:var(--gr);font-size:10px;font-family:'DM Mono',monospace}
+.trend-dn{color:var(--rd);font-size:10px;font-family:'DM Mono',monospace}
+.genre-badge{font-size:10px;padding:2px 7px;border-radius:4px;font-family:'DM Mono',monospace;font-weight:500}
+.rank-num{font-family:'DM Mono',monospace;font-size:11px;color:var(--dim)}
+
+/* STRATEGY */
+.strat-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.time-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:10px}
+.time-day{text-align:center}
+.time-day-lbl{font-size:9px;color:var(--dim);font-family:'Syne',sans-serif;font-weight:700;text-transform:uppercase;margin-bottom:4px}
+.time-slot{height:26px;border-radius:4px;background:var(--p2);border:1px solid var(--b1);margin-bottom:3px;cursor:default;transition:all .2s}
+.time-slot.hot{background:rgba(14,165,233,0.14);border-color:rgba(14,165,233,0.3)}
+.time-slot.warm{background:rgba(251,191,36,0.07);border-color:rgba(251,191,36,0.18)}
+.time-slot-lbl{font-size:7px;color:var(--dim);font-family:'DM Mono',monospace;padding:2px 3px}
+.gen-output{background:var(--p2);border:1px solid var(--b2);border-radius:8px;padding:12px;font-family:'DM Mono',monospace;font-size:11px;color:var(--ac2);min-height:48px;word-break:break-word;line-height:1.7;position:relative}
+.copy-chip{position:absolute;top:8px;right:8px;font-size:9px;padding:3px 8px;border-radius:4px;border:1px solid var(--b2);background:var(--p3);color:var(--dim);cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;letter-spacing:.3px;text-transform:uppercase}
+.copy-chip:hover{color:var(--tx);border-color:rgba(14,165,233,0.3)}
+.copy-chip.ok{color:var(--ac);border-color:rgba(14,165,233,0.4)}
+
+/* SCHEDULER */
+.sched-item{background:var(--p2);border:1px solid var(--b1);border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:12px;margin-bottom:8px;transition:border-color .2s}
+.sched-item:hover{border-color:rgba(14,165,233,0.15)}
+.sched-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.sched-info{flex:1;min-width:0}
+.sched-title{font-size:13px;font-weight:500;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:'Syne',sans-serif}
+.sched-meta{font-size:10px;color:var(--dim);font-family:'DM Mono',monospace}
+.sched-yt{font-size:9px;padding:2px 6px;border-radius:4px;font-family:'Syne',sans-serif;font-weight:700;background:rgba(244,114,182,0.1);color:var(--pk);border:1px solid rgba(244,114,182,0.2);text-transform:uppercase;letter-spacing:.3px}
+.sched-sh{font-size:9px;padding:2px 6px;border-radius:4px;font-family:'Syne',sans-serif;font-weight:700;background:rgba(14,165,233,0.1);color:var(--ac);border:1px solid rgba(14,165,233,0.2);text-transform:uppercase;letter-spacing:.3px}
+
+/* MISC */
+.divider{height:1px;background:var(--b1);margin:16px 0}
+.tips-list{list-style:none;display:flex;flex-direction:column;gap:5px}
+.tips-list li{font-size:12px;color:#8888b0;padding:8px 10px;background:var(--p2);border-radius:7px;border-left:2px solid rgba(14,165,233,0.25);line-height:1.5}
+.tips-list li strong{color:var(--tx)}
+.toggle-row{display:flex;gap:6px;margin-bottom:14px}
+.tog{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;padding:6px 14px;border-radius:8px;border:1px solid var(--b2);background:transparent;color:var(--dim);cursor:pointer;transition:all .2s;text-transform:uppercase;letter-spacing:.4px}
+.tog.on{background:rgba(14,165,233,0.1);border-color:rgba(14,165,233,0.3);color:var(--ac)}
+.shorts-note{background:rgba(129,140,248,0.06);border:1px solid rgba(129,140,248,0.15);border-radius:8px;padding:10px 12px;font-size:12px;color:#7070a0;margin-bottom:14px;line-height:1.6}
+.pill-row{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px}
+.pill{font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid var(--b2);background:transparent;color:var(--dim);cursor:pointer;font-family:'DM Mono',monospace;transition:all .15s}
+.pill:hover,.pill.on{background:rgba(14,165,233,0.1);border-color:rgba(14,165,233,0.3);color:var(--ac)}
+.notice{background:rgba(251,191,36,0.04);border:1px solid rgba(251,191,36,0.14);border-radius:10px;padding:12px 14px;margin-bottom:20px;display:flex;gap:10px;align-items:flex-start}
+.notice-icon{color:var(--yl);font-size:14px;flex-shrink:0;margin-top:1px}
+.notice-text{font-size:12px;color:#8880a0;line-height:1.6}
+.notice-text strong{color:var(--yl)}
+.empty{text-align:center;padding:2rem;color:var(--dim);font-size:13px}
+
+/* ANIMATED WAVE IN HEADER */
+@keyframes waveAnim{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.wave-wrap{overflow:hidden;width:180px;height:28px;position:relative}
+.wave-svg{animation:waveAnim 3s linear infinite;width:200%}
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">
+      <svg width="18" height="22" viewBox="0 0 18 22" fill="none">
+        <path d="M6 17.5C6 19.157 4.657 20.5 3 20.5C1.343 20.5 0 19.157 0 17.5C0 15.843 1.343 14.5 3 14.5C3.546 14.5 4.056 14.654 4.487 14.92L6 7H16L14 17.5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M6 7V2.5L16 1V5.5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="11" cy="17.5" r="2.5" stroke="white" stroke-width="1.5"/>
+      </svg>
+    </div>
+    <span class="logo-wordmark">BeatSync</span>
+  </div>
+
+  <div class="header-wave">
+    <div class="wave-wrap">
+      <svg class="wave-svg" height="28" viewBox="0 0 360 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <polyline points="0,14 8,14 12,6 16,22 20,4 24,24 28,10 32,18 36,14 44,14 48,8 52,20 56,5 60,23 64,12 68,17 72,14 80,14 84,6 88,22 92,4 96,24 100,10 104,18 108,14 116,14 120,8 124,20 128,5 132,23 136,12 140,17 144,14 152,14 156,6 160,22 164,4 168,24 172,10 176,18 180,14 188,14 192,8 196,20 200,5 204,23 208,12 212,17 216,14 224,14 228,6 232,22 236,4 240,24 244,10 248,18 252,14 260,14 264,8 268,20 272,5 276,23 280,12 284,17 288,14 296,14 300,6 304,22 308,4 312,24 316,10 320,18 324,14 332,14 336,8 340,20 344,5 348,23 352,12 356,17 360,14" stroke="rgba(14,165,233,0.35)" stroke-width="1.5" fill="none"/>
+      </svg>
+    </div>
+  </div>
+
+  <div class="header-right" style="display:flex;align-items:center;gap:8px">
+    <div class="test-toggle" id="test-toggle" onclick="toggleTestMode()">
+      <div class="toggle-knob" id="toggle-knob"><div class="toggle-dot" id="toggle-dot"></div></div>
+      <span class="toggle-lbl" id="toggle-lbl">TEST</span>
+    </div>
+    <button class="yt-connect" onclick="connectYT()">
+      <svg width="12" height="9" viewBox="0 0 13 9" fill="currentColor"><path d="M12.7 1.44A1.63 1.63 0 0 0 11.55.27C10.54 0 6.5 0 6.5 0S2.46 0 1.45.27A1.63 1.63 0 0 0 .3 1.44C0 2.46 0 4.5 0 4.5S0 6.54.3 7.56A1.63 1.63 0 0 0 1.45 8.73C2.46 9 6.5 9 6.5 9s4.04 0 5.05-.27a1.63 1.63 0 0 0 1.15-1.17C13 6.54 13 4.5 13 4.5S13 2.46 12.7 1.44ZM5.2 6.43V2.57L8.58 4.5 5.2 6.43Z"/></svg>
+      YouTube
+    </button>
+    <div class="avatar">P</div>
+  </div>
+</header>
+
+<div class="tabs">
+  <button class="tab on" onclick="showTab('upload')">Upload Studio</button>
+  <button class="tab" onclick="showTab('performance')">Performance</button>
+  <button class="tab" onclick="showTab('strategy')">Strategy</button>
+  <button class="tab" onclick="showTab('schedule')">Scheduler</button>
+</div>
+
+<!-- UPLOAD STUDIO -->
+<div id="page-upload" class="page on">
+  <div class="notice" id="test-notice">
+    <div class="notice-icon">⚡</div>
+    <div class="notice-text"><strong>Test Mode.</strong> No files are uploading to YouTube. Fill out metadata, simulate the flow, then toggle Live when your API is connected.</div>
+  </div>
+  <div class="toggle-row">
+    <button class="tog on" id="tog-video" onclick="setMode('video')">YouTube Video</button>
+    <button class="tog" id="tog-short" onclick="setMode('short')">YouTube Short</button>
+  </div>
+  <div id="short-note" class="shorts-note" style="display:none">
+    <strong>YouTube Shorts:</strong> Max 60 seconds · Vertical 9:16 · MP4 recommended · Different algorithm — great for new channel discoverability.
+  </div>
+  <div class="two-col">
+    <div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-title"><span class="dot"></span>Beat File</div>
+        <div class="drop-zone" id="audio-drop" ondragover="ev(event)" ondragleave="dl(event)" ondrop="dropAudio(event)">
+          <input type="file" accept=".mp3,.wav,.mp4,.m4a" onchange="loadAudio(this.files[0])">
+          <span class="drop-icon">🎵</span>
+          <div class="drop-title">Drop your beat here</div>
+          <div class="drop-sub">MP3 · WAV · MP4 · M4A</div>
+        </div>
+        <canvas id="waveform-canvas" style="display:none"></canvas>
+        <div class="audio-player" id="audio-player" style="display:none">
+          <div class="audio-controls">
+            <button class="play-btn" id="play-btn" onclick="togglePlay()">
+              <svg id="play-icon" width="11" height="13" viewBox="0 0 11 13" fill="#fff"><path d="M0 0l11 6.5L0 13z"/></svg>
+            </button>
+            <div style="flex:1;min-width:0">
+              <div class="audio-name" id="audio-name">—</div>
+              <div class="audio-meta" id="audio-meta">—</div>
+            </div>
+          </div>
+          <div class="audio-bar" onclick="seekAudio(event)"><div class="audio-progress" id="audio-progress"></div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="dot"></span>Video Metadata</div>
+        <div class="form-row">
+          <label>Title Templates</label>
+          <div class="title-cat">Standard format</div>
+          <div class="title-template" onclick="useT(0)">[Artist] Type Beat [YEAR] - "[Name]" (prod. [Tag])</div>
+          <div class="title-cat">With BPM</div>
+          <div class="title-template" onclick="useT(1)">"[Name]" | [Artist] Type Beat [YEAR] [BPM]bpm</div>
+          <div class="title-cat">Collab format</div>
+          <div class="title-template" onclick="useT(2)">[Artist] x [Artist2] Type Beat "[Name]" - Free [YEAR]</div>
+        </div>
+        <div class="form-row">
+          <label>Title <span id="tc" style="float:right;font-size:9px;font-family:'DM Mono',monospace;color:var(--dim)">0/100</span></label>
+          <input type="text" id="vid-title" placeholder="Your video title..." oninput="cc('vid-title','tc',100);utp()" maxlength="100">
+        </div>
+        <div class="form-row">
+          <label>Description <span id="dc" style="float:right;font-size:9px;font-family:'DM Mono',monospace;color:var(--dim)">0/5000</span></label>
+          <textarea id="vid-desc" rows="4" maxlength="5000" oninput="cc('vid-desc','dc',5000)" placeholder="Bio, licensing info, contact..."></textarea>
+          <button class="btn btn-pu" style="margin-top:6px" onclick="fillDesc()">Auto-fill template</button>
+        </div>
+        <div class="form-row">
+          <label>Tags — Enter or comma</label>
+          <div class="tag-box" id="tag-box" onclick="document.getElementById('tag-input').focus()">
+            <input class="tag-input-hidden" id="tag-input" placeholder="Add tags..." onkeydown="tagKey(event)">
+          </div>
+          <button class="btn" style="margin-top:6px" onclick="suggestTags()">Suggest from title</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="form-row"><label>Category</label><select id="vid-cat"><option>Music</option><option>Entertainment</option></select></div>
+          <div class="form-row"><label>Privacy</label><select id="vid-privacy" onchange="toggleSched()"><option value="public">Public</option><option value="unlisted">Unlisted</option><option value="private">Private</option><option value="scheduled">Scheduled</option></select></div>
+        </div>
+        <div class="form-row" id="sched-row" style="display:none"><label>Schedule Time</label><input type="datetime-local" id="sched-dt"></div>
+        <div class="form-row"><label>License</label><select id="vid-license"><option>Standard lease — for profit</option><option>Exclusive — beat removed on sale</option><option>Free download — promo only</option></select></div>
+        <div class="divider"></div>
+        <button class="btn btn-ac btn-full btn-lg" id="upload-btn" onclick="startUpload()">Upload to YouTube</button>
+        <div class="upload-progress" id="upload-progress"><div class="upload-bar" id="upload-bar"></div></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-title"><span class="dot"></span>Thumbnail</div>
+        <div class="thumb-preview" id="thumb-preview"><div style="display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--dim)"><span style="font-size:24px">🖼</span><span style="font-size:11px">No thumbnail</span></div></div>
+        <div class="drop-zone" style="padding:14px" ondragover="ev(event)" ondragleave="dl(event)" ondrop="dropThumb(event)">
+          <input type="file" accept="image/*" onchange="loadThumb(this.files[0])">
+          <div class="drop-title" style="font-size:12px">Drop thumbnail</div>
+          <div class="drop-sub">JPG · PNG · 1280×720 recommended</div>
+        </div>
+        <div class="divider"></div>
+        <ul class="tips-list">
+          <li><strong>1280×720px minimum</strong> — YouTube rejects smaller</li>
+          <li><strong>Bold text overlay</strong> with genre + artist name performs 40% better CTR</li>
+          <li><strong>High contrast dark backgrounds</strong> stop the scroll</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot" style="background:var(--yl);box-shadow:0 0 6px var(--yl)"></span>YouTube Preview</div>
+        <div style="background:var(--p2);border-radius:10px;overflow:hidden;border:1px solid var(--b2)">
+          <div style="aspect-ratio:16/9;background:#0a0a18;display:flex;align-items:center;justify-content:center" id="yt-thumb-prev"><span style="color:var(--dim);font-size:11px">Thumbnail preview</span></div>
+          <div style="padding:10px 12px">
+            <div style="font-size:13px;font-weight:600;line-height:1.4;margin-bottom:4px;font-family:'Syne',sans-serif" id="preview-title">Your title will appear here</div>
+            <div style="font-size:10px;color:var(--dim);font-family:'DM Mono',monospace">Your Channel · 0 views · Just now</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PERFORMANCE -->
+<div id="page-performance" class="page">
+  <div class="stat-row">
+    <div class="stat"><div class="stat-val sv-ac">2.4M</div><div class="stat-lbl">Avg views — Melodic Trap</div></div>
+    <div class="stat"><div class="stat-val sv-pu">67%</div><div class="stat-lbl">Retention — R&amp;B beats</div></div>
+    <div class="stat"><div class="stat-val sv-yl">14.2%</div><div class="stat-lbl">CTR — Dark type beats</div></div>
+    <div class="stat"><div class="stat-val sv-pk">890K</div><div class="stat-lbl">Monthly searches — Drill</div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+    <div class="card"><div class="card-title"><span class="dot"></span>Avg Views by Beat Type</div><canvas id="chart-views" height="200"></canvas></div>
+    <div class="card"><div class="card-title"><span class="dot" style="background:var(--pu);box-shadow:0 0 6px var(--pu)"></span>Search Volume Trend 2023–2026</div><canvas id="chart-trend" height="200"></canvas></div>
+  </div>
+  <div class="card"><div class="card-title"><span class="dot" style="background:var(--yl);box-shadow:0 0 6px var(--yl)"></span>Beat Type Performance Rankings</div><table class="perf-table"><thead><tr><th>#</th><th>Beat Type</th><th>Avg Views</th><th>Retention</th><th>Search Vol</th><th>Competition</th><th>Trend</th><th>Best For</th></tr></thead><tbody id="perf-tbody"></tbody></table></div>
+</div>
+
+<!-- STRATEGY -->
+<div id="page-strategy" class="page">
+  <div class="strat-grid">
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>Title Optimizer</div>
+      <div class="form-row"><label>Beat Name</label><input type="text" id="s-name" placeholder="e.g. Midnight"></div>
+      <div class="form-row"><label>Artist Type</label><input type="text" id="s-artist" placeholder="e.g. Juice WRLD"></div>
+      <div class="form-row"><label>BPM</label><input type="number" id="s-bpm" placeholder="140" style="width:90px"></div>
+      <button class="btn btn-ac btn-full" onclick="genTitles()">Generate Titles</button>
+      <div id="title-outputs" style="margin-top:12px"></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:var(--pu);box-shadow:0 0 6px var(--pu)"></span>Tag Generator</div>
+      <div class="form-row"><label>Genre / Artist</label><input type="text" id="s-genre" placeholder="e.g. Melodic Trap, Travis Scott"></div>
+      <button class="btn btn-pu btn-full" onclick="genTags()">Generate Tags</button>
+      <div class="gen-output" id="tag-output" style="margin-top:12px">Tags will appear here...</div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:var(--pk);box-shadow:0 0 6px var(--pk)"></span>Description Builder</div>
+      <div class="form-row"><label>Producer Name</label><input type="text" id="s-prod" placeholder="Your tag"></div>
+      <div class="form-row"><label>Contact / BeatStars</label><input type="text" id="s-contact" placeholder="email or link"></div>
+      <button class="btn btn-pk btn-full" onclick="genDesc2()">Build Description</button>
+      <div class="gen-output" id="desc-output2" style="margin-top:12px;font-size:11px;color:#6868a0">Template will appear here...</div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:var(--yl);box-shadow:0 0 6px var(--yl)"></span>Competition Scorer</div>
+      <div class="pill-row" id="niche-pills"></div>
+      <div id="niche-score" style="display:none;margin-top:8px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:12px;font-family:'Syne',sans-serif;font-weight:700" id="niche-label">—</span><span style="font-size:11px;font-family:'DM Mono',monospace" id="niche-pct">—</span></div>
+        <div style="height:4px;background:var(--p2);border-radius:2px;overflow:hidden"><div id="niche-bar" style="height:100%;border-radius:2px;transition:width .5s"></div></div>
+        <div style="font-size:11px;color:#6868a0;margin-top:8px;line-height:1.6" id="niche-advice"></div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="dot" style="background:var(--yl);box-shadow:0 0 6px var(--yl)"></span>Best Posting Times (EST)</div>
+    <div class="time-grid" id="time-grid"></div>
+    <div style="display:flex;gap:16px;margin-top:10px;font-size:10px;color:var(--dim);font-family:'Syne',sans-serif">
+      <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:rgba(14,165,233,0.3);display:inline-block"></span>Peak</span>
+      <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:rgba(251,191,36,0.2);display:inline-block"></span>Good</span>
+    </div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <div class="card-title"><span class="dot" style="background:var(--pk);box-shadow:0 0 6px var(--pk)"></span>Engagement Tactics</div>
+    <div class="three-col">
+      <ul class="tips-list">
+        <li><strong>Pin a comment</strong> with your beat store link immediately — drives 3x more lease sales</li>
+        <li><strong>Post a Short</strong> of the best 30 seconds same day — cross-promotes to different audience</li>
+        <li><strong>Reply to every comment</strong> in first 2 hours — signals quality to algorithm</li>
+      </ul>
+      <ul class="tips-list">
+        <li><strong>3x/week beats 1x/week</strong> for new channels even if quality dips slightly</li>
+        <li><strong>Timestamps in description</strong> increase average watch time by 15–20%</li>
+        <li><strong>Add [FREE] in title</strong> first 30 days then remove — drives early volume</li>
+      </ul>
+      <ul class="tips-list">
+        <li><strong>Cross-post to TikTok</strong> same day — viral TikTok beat clips regularly send 50K+ to YouTube</li>
+        <li><strong>Beat playlists</strong> by genre/mood get 40% more watch time than standalone videos</li>
+        <li><strong>Collab tags</strong> — mention 2–3 producers in description for cross-audience traffic</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- SCHEDULER -->
+<div id="page-schedule" class="page">
+  <div class="two-col">
+    <div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-title"><span class="dot"></span>Schedule a Post</div>
+        <div class="form-row"><label>Title</label><input type="text" id="sch-title" placeholder="Beat title..."></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="form-row"><label>Type</label><select id="sch-type"><option value="video">YouTube Video</option><option value="short">YouTube Short</option></select></div>
+          <div class="form-row"><label>Date &amp; Time</label><input type="datetime-local" id="sch-date"></div>
+        </div>
+        <div class="form-row"><label>Notes</label><input type="text" id="sch-notes" placeholder="e.g. dark melodic, Carti type"></div>
+        <button class="btn btn-ac btn-full" onclick="addSchedule()">Add to schedule</button>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot" style="background:var(--yl);box-shadow:0 0 6px var(--yl)"></span>Scheduling Tips</div>
+        <ul class="tips-list">
+          <li><strong>Space beats 48hrs apart minimum</strong> — posting too fast cannibalizes views</li>
+          <li><strong>Tue &amp; Thu 2–4pm EST</strong> are peak for type beat searches</li>
+          <li><strong>Schedule Shorts on different days</strong> — keeps content fresh daily</li>
+          <li><strong>Drop big beats on Friday</strong> — weekend streaming carries through Sunday</li>
+          <li><strong>Never post midnight–8am</strong> your audience timezone — wastes the 2-hour algo window</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:var(--pu);box-shadow:0 0 6px var(--pu)"></span>Upcoming Posts</div>
+      <div id="sched-list"><div class="empty">No posts scheduled yet.</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── BG PARTICLES ──────────────────────────────────────────────────
+(function(){
+  var c=document.getElementById('bg-canvas'),ctx=c.getContext('2d'),pts=[];
+  function resize(){c.width=window.innerWidth;c.height=window.innerHeight}
+  resize();window.addEventListener('resize',resize);
+  for(var i=0;i<55;i++)pts.push({x:Math.random()*window.innerWidth,y:Math.random()*window.innerHeight,r:Math.random()*.9+.3,vx:(Math.random()-.5)*.18,vy:(Math.random()-.5)*.18,o:Math.random()*.35+.05});
+  function draw(){
+    ctx.clearRect(0,0,c.width,c.height);
+    pts.forEach(function(p){
+      p.x+=p.vx;p.y+=p.vy;
+      if(p.x<0)p.x=c.width;if(p.x>c.width)p.x=0;
+      if(p.y<0)p.y=c.height;if(p.y>c.height)p.y=0;
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle='rgba(14,165,233,'+p.o+')';ctx.fill();
+    });
+    // draw connections
+    for(var i=0;i<pts.length;i++)for(var j=i+1;j<pts.length;j++){
+      var dx=pts[i].x-pts[j].x,dy=pts[i].y-pts[j].y,d=Math.sqrt(dx*dx+dy*dy);
+      if(d<110){ctx.beginPath();ctx.moveTo(pts[i].x,pts[i].y);ctx.lineTo(pts[j].x,pts[j].y);ctx.strokeStyle='rgba(14,165,233,'+(0.06*(1-d/110))+')';ctx.lineWidth=.5;ctx.stroke()}
+    }
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ── GLOBALS ───────────────────────────────────────────────────────
+var audioEl=null,tags=[],uploadMode='video',testMode=true;
+var schedule=JSON.parse(localStorage.getItem('bs_sched')||'[]');
+
+// ── TEST TOGGLE ───────────────────────────────────────────────────
+function toggleTestMode(){
+  testMode=!testMode;
+  var dot=document.getElementById('toggle-dot');
+  var knob=document.getElementById('toggle-knob');
+  var lbl=document.getElementById('toggle-lbl');
+  var tog=document.getElementById('test-toggle');
+  var notice=document.getElementById('test-notice');
+  if(testMode){dot.className='toggle-dot';knob.className='toggle-knob';lbl.className='toggle-lbl';lbl.textContent='TEST';tog.className='test-toggle';notice.style.display='flex'}
+  else{dot.className='toggle-dot live';knob.className='toggle-knob live';lbl.className='toggle-lbl live';lbl.textContent='LIVE';tog.className='test-toggle live';notice.style.display='none'}
+}
+function connectYT(){alert('YouTube API setup:\n\n1. Go to console.cloud.google.com\n2. Create a project → Enable YouTube Data API v3\n3. Create OAuth 2.0 credentials\n4. Add your Client ID to this tool\n\nSay "connect the API" and I\'ll walk you through every step.')}
+
+// ── TABS ──────────────────────────────────────────────────────────
+function showTab(n){
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('on')});
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('on')});
+  document.querySelector('.tab[onclick="showTab(\''+n+'\')"]').classList.add('on');
+  document.getElementById('page-'+n).classList.add('on');
+  if(n==='performance')initCharts();
+  if(n==='strategy'){initNicheScore();buildTimeGrid()}
+}
+
+// ── DRAG / DROP ───────────────────────────────────────────────────
+function ev(e){e.preventDefault();e.currentTarget.classList.add('drag-over')}
+function dl(e){e.currentTarget.classList.remove('drag-over')}
+function dropAudio(e){e.preventDefault();e.currentTarget.classList.remove('drag-over');var f=e.dataTransfer.files[0];if(f)loadAudio(f)}
+function dropThumb(e){e.preventDefault();e.currentTarget.classList.remove('drag-over');var f=e.dataTransfer.files[0];if(f)loadThumb(f)}
+
+// ── AUDIO ─────────────────────────────────────────────────────────
+function fmtSz(b){return b>1048576?(b/1048576).toFixed(1)+'MB':Math.round(b/1024)+'KB'}
+function fmtT(s){var m=Math.floor(s/60);return m+':'+(Math.floor(s%60)+'').padStart(2,'0')}
+function loadAudio(f){
+  if(!f)return;
+  if(audioEl){audioEl.pause();audioEl=null}
+  document.getElementById('audio-name').textContent=f.name;
+  document.getElementById('audio-meta').textContent=fmtSz(f.size);
+  document.getElementById('audio-player').style.display='block';
+  var cv=document.getElementById('waveform-canvas');cv.style.display='block';
+  audioEl=new Audio(URL.createObjectURL(f));
+  audioEl.addEventListener('loadedmetadata',function(){document.getElementById('audio-meta').textContent=fmtSz(f.size)+' · '+fmtT(audioEl.duration)});
+  audioEl.addEventListener('timeupdate',function(){if(audioEl.duration)document.getElementById('audio-progress').style.width=(audioEl.currentTime/audioEl.duration*100)+'%'});
+  drawWaveform(f,cv);
+  if(!document.getElementById('vid-title').value)document.getElementById('vid-title').value=f.name.replace(/\.(mp3|wav|m4a|mp4)$/i,'');
+  utp();
+}
+function togglePlay(){
+  if(!audioEl)return;
+  if(audioEl.paused){audioEl.play();document.getElementById('play-icon').innerHTML='<rect x="1" y="1" width="4" height="11" rx="1" fill="#fff"/><rect x="7" y="1" width="4" height="11" rx="1" fill="#fff"/>'}
+  else{audioEl.pause();document.getElementById('play-icon').innerHTML='<path d="M0 0l11 6.5L0 13z" fill="#fff"/>'}
+}
+function seekAudio(e){if(!audioEl||!audioEl.duration)return;var r=e.currentTarget.getBoundingClientRect();audioEl.currentTime=((e.clientX-r.left)/r.width)*audioEl.duration}
+function drawWaveform(file,canvas){
+  var reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      var ac=new(window.AudioContext||window.webkitAudioContext)();
+      ac.decodeAudioData(e.target.result,function(buf){
+        var data=buf.getChannelData(0),W=canvas.offsetWidth||600,H=52;
+        canvas.width=W;canvas.height=H;
+        var c2=canvas.getContext('2d'),step=Math.ceil(data.length/W),amp=H/2;
+        var grad=c2.createLinearGradient(0,0,W,0);
+        grad.addColorStop(0,'rgba(14,165,233,0.8)');grad.addColorStop(0.5,'rgba(129,140,248,0.8)');grad.addColorStop(1,'rgba(244,114,182,0.7)');
+        c2.strokeStyle=grad;c2.lineWidth=1;
+        for(var i=0;i<W;i++){var mn=0,mx=0;for(var j=0;j<step;j++){var v=data[i*step+j]||0;if(v<mn)mn=v;if(v>mx)mx=v}c2.beginPath();c2.moveTo(i,amp+mn*amp);c2.lineTo(i,amp+mx*amp);c2.stroke()}
+      });
+    }catch(err){}
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ── THUMBNAIL ─────────────────────────────────────────────────────
+function loadThumb(f){
+  var url=URL.createObjectURL(f);
+  document.getElementById('thumb-preview').innerHTML='<img src="'+url+'">';
+  document.getElementById('yt-thumb-prev').innerHTML='<img src="'+url+'" style="width:100%;height:100%;object-fit:cover">';
+}
+
+// ── METADATA ──────────────────────────────────────────────────────
+function cc(id,cid,max){var v=document.getElementById(id).value.length;document.getElementById(cid).textContent=v+'/'+max;document.getElementById(cid).style.color=v>max*.9?'var(--yl)':'var(--dim)'}
+function utp(){var v=document.getElementById('vid-title').value;document.getElementById('preview-title').textContent=v||'Your title will appear here'}
+function useT(i){var yr=new Date().getFullYear();var t=['[Artist] Type Beat '+yr+' - "[Name]" (prod. [Tag])','\"[Name]\" | [Artist] Type Beat '+yr+' [BPM]bpm','[Artist] x [Artist2] Type Beat "[Name]" - Free '+yr];document.getElementById('vid-title').value=t[i];utp();cc('vid-title','tc',100)}
+function toggleSched(){document.getElementById('sched-row').style.display=document.getElementById('vid-privacy').value==='scheduled'?'block':'none'}
+function fillDesc(){
+  var p=document.getElementById('s-prod').value||'[Producer Name]';
+  var con=document.getElementById('s-contact').value||'[email / beatstars]';
+  var ti=document.getElementById('vid-title').value||'[Beat Title]';
+  document.getElementById('vid-desc').value='🎵 '+ti+'\nProd. by '+p+'\n\n📩 Licensing: '+con+'\n\n──────────────────\n🔑 LEASES\n• Basic — $29.99 (MP3)\n• Premium — $49.99 (MP3+WAV+Trackout)\n• Exclusive — DM for pricing\n\n──────────────────\n📌 TIMESTAMPS\n0:00 Intro\n0:08 Hook\n0:24 Verse\n\n#typebeat #freebeat #'+new Date().getFullYear();
+}
+
+// ── TAGS ──────────────────────────────────────────────────────────
+function tagKey(e){if(e.key==='Enter'||e.key===','){e.preventDefault();addTag(document.getElementById('tag-input').value)}}
+function addTag(v){v=v.trim().replace(/,$/,'');if(!v||tags.includes(v))return;tags.push(v);renderTags();document.getElementById('tag-input').value=''}
+function removeTag(i){tags.splice(i,1);renderTags()}
+function renderTags(){var b=document.getElementById('tag-box');var inp=document.getElementById('tag-input');b.innerHTML='';tags.forEach(function(t,i){var s=document.createElement('span');s.className='tag';s.innerHTML=t+' <span class="tag-x" onclick="removeTag('+i+')">×</span>';b.appendChild(s)});b.appendChild(inp)}
+function suggestTags(){var t=document.getElementById('vid-title').value;if(!t)return;var words=t.split(/\s+/).filter(function(w){return w.length>2&&!/^(and|the|for|with|feat|type|beat|free|prod|by|in|a)$/i.test(w)});words.push('type beat','free beat',new Date().getFullYear().toString(),'type beat '+new Date().getFullYear());words.forEach(function(w){addTag(w.toLowerCase())})}
+
+// ── UPLOAD ────────────────────────────────────────────────────────
+function startUpload(){
+  var title=document.getElementById('vid-title').value;
+  if(!title){alert('Add a title first');return}
+  if(!testMode){alert('Live mode: YouTube API not connected yet. Toggle to Test Mode or connect the API.');return}
+  var bar=document.getElementById('upload-bar'),wrap=document.getElementById('upload-progress'),btn=document.getElementById('upload-btn');
+  wrap.style.display='block';bar.style.width='0%';btn.textContent='Uploading...';btn.disabled=true;
+  var p=0,iv=setInterval(function(){
+    p+=Math.random()*10+4;
+    if(p>=100){p=100;clearInterval(iv);bar.style.width='100%';
+      setTimeout(function(){
+        btn.innerHTML='✓ Uploaded (Test Mode)';
+        btn.style.background='linear-gradient(135deg,#0ea5e9,#818cf8)';
+        btn.style.border='none';btn.disabled=false;
+        if(document.getElementById('vid-privacy').value==='scheduled'){var dt=document.getElementById('sched-dt').value;if(dt){schedule.push({title:title,type:uploadMode,dt:dt,notes:'Scheduled from upload'});localStorage.setItem('bs_sched',JSON.stringify(schedule));renderSchedule()}}
+      },300);
+    }else bar.style.width=p+'%';
+  },200);
+}
+function setMode(m){uploadMode=m;document.getElementById('tog-video').classList.toggle('on',m==='video');document.getElementById('tog-short').classList.toggle('on',m==='short');document.getElementById('short-note').style.display=m==='short'?'block':'none'}
+
+// ── CHARTS ────────────────────────────────────────────────────────
+var chartsInit=false;
+function initCharts(){
+  if(chartsInit)return;chartsInit=true;
+  var blues=['rgba(14,165,233,0.6)','rgba(129,140,248,0.55)','rgba(244,114,182,0.5)','rgba(14,165,233,0.45)','rgba(251,191,36,0.5)','rgba(14,165,233,0.4)','rgba(129,140,248,0.4)','rgba(244,114,182,0.4)','rgba(251,191,36,0.4)','rgba(14,165,233,0.35)'];
+  new Chart(document.getElementById('chart-views'),{type:'bar',data:{labels:['Melodic Trap','Dark/Evil','Phonk','Drill','Rod Wave','R&B/Soul','Travis','Juice','Carti','LoFi'],datasets:[{data:[2400,1900,1700,1600,1400,1300,1200,1100,900,800],backgroundColor:blues,borderRadius:4,borderSkipped:false}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#3a3a5c',font:{family:'DM Mono',size:9}},grid:{color:'rgba(255,255,255,0.02)'}},y:{ticks:{color:'#3a3a5c',font:{family:'DM Mono',size:9},callback:function(v){return v+'K'}},grid:{color:'rgba(255,255,255,0.02)'}}}}});
+  new Chart(document.getElementById('chart-trend'),{type:'line',data:{labels:['2023','2024','2025','2026'],datasets:[{label:'Phonk',data:[600,1200,1700,1900],borderColor:'rgba(244,114,182,0.8)',tension:.4,pointRadius:3,borderWidth:2},{label:'Dark beats',data:[800,1100,1500,1900],borderColor:'rgba(248,113,113,0.8)',tension:.4,pointRadius:3,borderWidth:2},{label:'Melodic Trap',data:[1800,2000,2200,2400],borderColor:'rgba(14,165,233,0.9)',tension:.4,pointRadius:3,borderWidth:2},{label:'Drill',data:[1200,1400,1500,1600],borderColor:'rgba(129,140,248,0.8)',tension:.4,pointRadius:3,borderWidth:2}]},options:{responsive:true,plugins:{legend:{labels:{color:'#3a3a5c',font:{family:'DM Mono',size:9},boxWidth:8,padding:8}}},scales:{x:{ticks:{color:'#3a3a5c',font:{family:'DM Mono',size:9}},grid:{color:'rgba(255,255,255,0.02)'}},y:{ticks:{color:'#3a3a5c',font:{family:'DM Mono',size:9},callback:function(v){return v+'K'}},grid:{color:'rgba(255,255,255,0.02)'}}}}});
+  var perf=[
+    {rank:1,name:'Melodic Trap',views:'2.4M',ret:'58%',search:'Very High',comp:72,trend:'+12%',best:'Juice WRLD, Rod Wave',col:'rgba(14,165,233,0.6)'},
+    {rank:2,name:'Dark/Evil Beats',views:'1.9M',ret:'54%',search:'High',comp:58,trend:'+24%',best:'Travis Scott, Carti',col:'rgba(248,113,113,0.6)'},
+    {rank:3,name:'Phonk',views:'1.7M',ret:'51%',search:'High',comp:65,trend:'+41%',best:'Racing edits, TikTok',col:'rgba(244,114,182,0.6)'},
+    {rank:4,name:'NYC/UK Drill',views:'1.6M',ret:'49%',search:'Very High',comp:81,trend:'+8%',best:'Pop Smoke, Central Cee',col:'rgba(129,140,248,0.6)'},
+    {rank:5,name:'Rod Wave / Emo',views:'1.4M',ret:'67%',search:'High',comp:44,trend:'+18%',best:'R&B vocalists',col:'rgba(251,191,36,0.6)'},
+    {rank:6,name:'R&B / Soul',views:'1.3M',ret:'71%',search:'Medium',comp:31,trend:'+15%',best:'Female vocalists',col:'rgba(14,165,233,0.45)'},
+    {rank:7,name:'Travis Scott',views:'1.2M',ret:'55%',search:'High',comp:63,trend:'+5%',best:'Male trap artists',col:'rgba(248,113,113,0.45)'},
+    {rank:8,name:'Juice WRLD',views:'1.1M',ret:'62%',search:'Very High',comp:77,trend:'-3%',best:'Emo rap artists',col:'rgba(129,140,248,0.45)'},
+    {rank:9,name:'Playboi Carti',views:'900K',ret:'48%',search:'Medium',comp:52,trend:'+31%',best:'Rage / alt rap',col:'rgba(244,114,182,0.45)'},
+    {rank:10,name:'LoFi Hip-Hop',views:'800K',ret:'79%',search:'High',comp:68,trend:'+2%',best:'Study playlists',col:'rgba(251,191,36,0.45)'}
+  ];
+  document.getElementById('perf-tbody').innerHTML=perf.map(function(r){
+    var tu=r.trend.startsWith('+');
+    return'<tr><td class="rank-num">'+r.rank+'</td><td><span class="genre-badge" style="background:'+r.col.replace('0.6','0.12').replace('0.45','0.1')+';color:'+r.col.replace(/,[\d.]+\)$/,',1)')+';border:1px solid '+r.col.replace(/,[\d.]+\)$/,',0.3)')+'">'+r.name+'</span></td><td style="font-family:\'DM Mono\',monospace;font-size:11px">'+r.views+'</td><td style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--ac)">'+r.ret+'</td><td style="font-size:11px">'+r.search+'</td><td><div class="bar-cell"><div class="mini-bar" style="width:'+r.comp+'px;background:'+r.col+'"></div><span style="font-size:10px;font-family:\'DM Mono\',monospace">'+r.comp+'%</span></div></td><td class="'+(tu?'trend-up':'trend-dn')+'">'+r.trend+'</td><td style="font-size:11px;color:var(--dim)">'+r.best+'</td></tr>';
+  }).join('');
+}
+
+// ── STRATEGY ──────────────────────────────────────────────────────
+var niches=[
+  {n:'Melodic Trap',s:72,c:'Medium-High',a:'Huge search volume but many established channels. Focus on a specific artist to carve a lane.'},
+  {n:'Dark Beats',s:58,c:'Medium',a:'Growing fast with less saturation. Pair with Carti/Travis aesthetic for best results.'},
+  {n:'Phonk',s:65,c:'Medium-High',a:'TikTok drives massive spillover to YouTube. Post a Short of every phonk beat you upload.'},
+  {n:'Drill',s:81,c:'Very High',a:'Most competitive. Specialize — NYC Drill OR UK Drill, not both.'},
+  {n:'R&B Beats',s:31,c:'Low',a:'Least competitive, highest retention. Female artists search heavily here.'},
+  {n:'Emo Rap',s:44,c:'Low-Med',a:'Underserved vs search demand. Juice WRLD type beats have massive search with room for new creators.'},
+  {n:'Rage',s:52,c:'Medium',a:'Carti and Ken Carson type beats. Growing fast. Unique sound design required to stand out.'}
+];
+function initNicheScore(){var c=document.getElementById('niche-pills');if(c.children.length)return;niches.forEach(function(n,i){var b=document.createElement('button');b.className='pill';b.textContent=n.n;b.onclick=function(){document.querySelectorAll('.pill').forEach(function(p){p.classList.remove('on')});b.classList.add('on');showNiche(i)};c.appendChild(b)})}
+function showNiche(i){var n=niches[i];document.getElementById('niche-score').style.display='block';document.getElementById('niche-label').textContent=n.n+' — Competition: '+n.c;document.getElementById('niche-pct').textContent=n.s+'%';var col=n.s>70?'rgba(248,113,113,0.8)':n.s>50?'rgba(251,191,36,0.8)':'rgba(14,165,233,0.8)';document.getElementById('niche-bar').style.cssText='width:'+n.s+'%;background:'+col+';height:100%;border-radius:2px;transition:width .5s';document.getElementById('niche-advice').textContent=n.a}
+function buildTimeGrid(){var el=document.getElementById('time-grid');if(el.children.length)return;var days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];var slots=['12am','6am','12pm','3pm','6pm','9pm'];var hot={Mon:['3pm','6pm'],Tue:['12pm','3pm','6pm'],Wed:['3pm'],Thu:['12pm','3pm','6pm'],Fri:['6pm','9pm'],Sat:['12pm','3pm'],Sun:['3pm','6pm']};var warm={Mon:['12pm'],Wed:['12pm','6pm'],Fri:['12pm','3pm'],Sat:['6pm'],Sun:['12pm']};days.forEach(function(d){var col=document.createElement('div');col.className='time-day';col.innerHTML='<div class="time-day-lbl">'+d+'</div>';slots.forEach(function(s){var sl=document.createElement('div');sl.className='time-slot'+(hot[d]&&hot[d].includes(s)?' hot':warm[d]&&warm[d].includes(s)?' warm':'');sl.title=d+' '+s+(hot[d]&&hot[d].includes(s)?' — Peak':warm[d]&&warm[d].includes(s)?' — Good':'');var lb=document.createElement('div');lb.className='time-slot-lbl';lb.textContent=s;sl.appendChild(lb);col.appendChild(sl)});el.appendChild(col)})}
+function genTitles(){var nm=document.getElementById('s-name').value||'Beat';var ar=document.getElementById('s-artist').value||'Artist';var bm=document.getElementById('s-bpm').value||'';var yr=new Date().getFullYear();var ts=['<div class="gen-output" style="margin-bottom:6px">'+ar+' Type Beat '+yr+' - "'+nm+'"'+(bm?' ('+bm+'bpm)':'')+'<button class="copy-chip" onclick="cpC(this)">Copy</button></div>','<div class="gen-output" style="margin-bottom:6px">"'+nm+'" | '+ar+' Type Beat '+yr+(bm?' '+bm+'bpm':'')+'<button class="copy-chip" onclick="cpC(this)">Copy</button></div>','<div class="gen-output" style="margin-bottom:6px">FREE '+ar+' Type Beat '+yr+' ~ "'+nm+'" [prod. free]<button class="copy-chip" onclick="cpC(this)">Copy</button></div>','<div class="gen-output" style="margin-bottom:6px">'+ar+' x Drake Type Beat '+yr+' - "'+nm+'" (melodic)<button class="copy-chip" onclick="cpC(this)">Copy</button></div>'];document.getElementById('title-outputs').innerHTML=ts.join('')}
+function genTags(){var g=document.getElementById('s-genre').value||'type beat';var yr=new Date().getFullYear();var base=[g.toLowerCase(),'type beat',g+' type beat',g+' type beat '+yr,'free type beat','free '+g+' type beat',g+' instrumental',g+' beat '+yr,'rap beats','trap beats','melodic type beat','new type beats '+yr];document.getElementById('tag-output').innerHTML=base.join(', ')+'<button class="copy-chip" onclick="cpC(this)">Copy</button>'}
+function genDesc2(){var p=document.getElementById('s-prod').value||'[Tag]';var con=document.getElementById('s-contact').value||'[Contact]';var d='Prod. by '+p+'\nLicensing → '+con+'\n\n─────────────\n🔑 LEASES\nBasic — $29\nPremium — $49\nExclusive — DM\n\n#typebeat #freebeat #'+new Date().getFullYear();document.getElementById('desc-output2').textContent=d;document.getElementById('desc-output2').insertAdjacentHTML('beforeend','<button class="copy-chip" onclick="cpC(this)">Copy</button>')}
+function cpC(btn){var text=btn.parentElement.textContent.trim().replace(/Copy$/,'').trim();navigator.clipboard.writeText(text).then(function(){btn.textContent='Copied!';btn.classList.add('ok');setTimeout(function(){btn.textContent='Copy';btn.classList.remove('ok')},1500)})}
+
+// ── SCHEDULER ─────────────────────────────────────────────────────
+function addSchedule(){var t=document.getElementById('sch-title').value.trim();var dt=document.getElementById('sch-date').value;if(!t||!dt){alert('Add title and date');return}schedule.push({title:t,type:document.getElementById('sch-type').value,dt:dt,notes:document.getElementById('sch-notes').value});localStorage.setItem('bs_sched',JSON.stringify(schedule));renderSchedule();document.getElementById('sch-title').value='';document.getElementById('sch-date').value='';document.getElementById('sch-notes').value=''}
+function removeSchedule(i){schedule.splice(i,1);localStorage.setItem('bs_sched',JSON.stringify(schedule));renderSchedule()}
+function renderSchedule(){var el=document.getElementById('sched-list');if(!schedule.length){el.innerHTML='<div class="empty">No posts scheduled yet.</div>';return}var s=schedule.slice().sort(function(a,b){return new Date(a.dt)-new Date(b.dt)});el.innerHTML=s.map(function(sc,i){var d=new Date(sc.dt);var ds=d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})+' · '+d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});var col=sc.type==='short'?'var(--ac)':'var(--pk)';return'<div class="sched-item"><div class="sched-dot" style="background:'+col+'"></div><div class="sched-info"><div class="sched-title">'+sc.title+'</div><div class="sched-meta">'+ds+(sc.notes?' · '+sc.notes:'')+'</div></div><span class="'+(sc.type==='short'?'sched-sh':'sched-yt')+'">'+sc.type.toUpperCase()+'</span><button class="btn" style="padding:3px 8px;font-size:10px;color:var(--rd);min-width:auto" onclick="removeSchedule('+i+')">×</button></div>'}).join('')}
+
+renderSchedule();
+</script>
+</body>
+</html>
